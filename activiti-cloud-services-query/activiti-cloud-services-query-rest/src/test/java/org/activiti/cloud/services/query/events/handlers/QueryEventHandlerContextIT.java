@@ -16,7 +16,12 @@
 
 package org.activiti.cloud.services.query.events.handlers;
 
+import static org.activiti.cloud.services.query.events.handlers.QueryEventHandlerContextIT.MOCK_DEPENDENCIES_PROFILE;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
+
 import java.util.Map;
+
 import javax.persistence.EntityManager;
 
 import org.activiti.api.model.shared.event.VariableEvent;
@@ -28,6 +33,7 @@ import org.activiti.cloud.services.query.app.repository.ProcessInstanceRepositor
 import org.activiti.cloud.services.query.app.repository.TaskCandidateGroupRepository;
 import org.activiti.cloud.services.query.app.repository.TaskCandidateUserRepository;
 import org.activiti.cloud.services.query.app.repository.TaskRepository;
+import org.activiti.cloud.services.query.app.repository.TaskVariableRepository;
 import org.activiti.cloud.services.query.app.repository.VariableRepository;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -40,10 +46,6 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringRunner;
-
-import static org.activiti.cloud.services.query.events.handlers.QueryEventHandlerContextIT.MOCK_DEPENDENCIES_PROFILE;
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.mock;
 
 @RunWith(SpringRunner.class)
 @ContextConfiguration(classes = QueryEventHandlerContextIT.QueryEventHandlerContextConfig.class)
@@ -81,6 +83,12 @@ public class QueryEventHandlerContextIT {
             return mock(VariableRepository.class);
         }
 
+        @Primary
+        @Bean
+        public TaskVariableRepository getTaskVariableRepository() {
+            return mock(TaskVariableRepository.class);
+        }
+        
         @Primary
         @Bean
         public TaskCandidateGroupRepository taskCandidateGroupRepository() {
