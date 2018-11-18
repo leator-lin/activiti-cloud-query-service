@@ -16,14 +16,32 @@
 
 package org.activiti.cloud.services.query.rest;
 
+import static net.javacrumbs.jsonunit.fluent.JsonFluentAssert.assertThatJson;
+import static org.activiti.alfresco.rest.docs.AlfrescoDocumentation.pageRequestParameters;
+import static org.activiti.alfresco.rest.docs.AlfrescoDocumentation.pagedResourcesResponseFields;
+import static org.activiti.alfresco.rest.docs.AlfrescoDocumentation.taskFields;
+import static org.activiti.alfresco.rest.docs.AlfrescoDocumentation.taskIdParameter;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.mock;
+import static org.springframework.restdocs.mockmvc.MockMvcRestDocumentation.document;
+import static org.springframework.restdocs.mockmvc.RestDocumentationRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
 import java.util.Collections;
 import java.util.Date;
 import java.util.UUID;
 
+import com.querydsl.core.types.Predicate;
+import org.activiti.api.runtime.shared.security.SecurityManager;
+import org.activiti.api.task.model.Task;
 import org.activiti.cloud.alfresco.argument.resolver.AlfrescoPageRequest;
+import org.activiti.cloud.services.query.app.repository.EntityFinder;
 import org.activiti.cloud.services.query.app.repository.TaskRepository;
 import org.activiti.cloud.services.query.model.TaskEntity;
-import org.activiti.api.task.model.Task;
+import org.activiti.cloud.services.security.TaskLookupRestrictionService;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -40,16 +58,6 @@ import org.springframework.test.context.junit4.SpringRunner;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
-import static net.javacrumbs.jsonunit.fluent.JsonFluentAssert.assertThatJson;
-import static org.activiti.alfresco.rest.docs.AlfrescoDocumentation.pageRequestParameters;
-import static org.activiti.alfresco.rest.docs.AlfrescoDocumentation.pagedResourcesResponseFields;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.BDDMockito.given;
-import static org.springframework.restdocs.mockmvc.MockMvcRestDocumentation.document;
-import static org.springframework.restdocs.mockmvc.RestDocumentationRequestBuilders.get;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-
 @RunWith(SpringRunner.class)
 @WebMvcTest(TaskAdminController.class)
 @EnableSpringDataWebSupport
@@ -65,6 +73,15 @@ public class TaskEntityAdminControllerIT {
 
     @MockBean
     private TaskRepository taskRepository;
+ 
+    @MockBean
+    private EntityFinder entityFinder;
+
+    @MockBean
+    private TaskLookupRestrictionService taskLookupRestrictionService;
+
+    @MockBean
+    private SecurityManager securityManager;
 
     @Test
     public void allTasksShouldReturnAllResultsUsingAlfrescoMetadataWhenMediaTypeIsApplicationJson() throws Exception {
@@ -123,6 +140,31 @@ public class TaskEntityAdminControllerIT {
                               null,
                               "aFormKey"
         );
+    }
+    
+    @Test
+    public void findByIdShouldUseAlfrescoMetadataWhenMediaTypeIsApplicationJson() throws Exception {
+        //given
+        TaskEntity taskEntity = buildDefaultTask();
+        given(entityFinder.findById(eq(taskRepository),
+                                    eq(taskEntity.getId()),
+                                    anyString()))
+                .willReturn(taskEntity);
+
+        Predicate restrictionPredicate = mock(Predicate.class);
+        given(taskLookupRestrictionService.restrictTaskQuery(any())).willReturn(restrictionPredicate);
+        given(taskRepository.findAll(restrictionPredicate)).willReturn(Collections.singletonList(taskEntity));
+
+        //when
+        this.mockMvc.perform(get("/admin/v1/tasks/{taskId}",
+                                 taskEntity.getId()).accept(MediaType.APPLICATION_JSON_VALUE))
+                //then
+                .andExpect(status().isOk())
+                .andDo(document(TASK_ADMIN_ALFRESCO_IDENTIFIER + "/get",
+                                taskIdParameter(),
+                                taskFields()
+                       )
+                );
     }
 
 }
